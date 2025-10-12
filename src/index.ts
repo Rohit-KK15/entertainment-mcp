@@ -5,7 +5,7 @@ import { omdbTool } from "./tools/omdb-details.js";
 import { tmdbTrendingTool } from "./tools/tmdb-trending.js";
 import { tmdbPopularTool } from "./tools/tmdb-popular.js";
 import { tmdbGenreTool } from "./tools/tmdb-genre.js";
-import { movieSuggestionsTool } from "./tools/tmdb-suggestions.js";
+import { entertainmentSuggestionsTool } from "./tools/tmdb-suggestions.js";
 
 /**
  * Initializes and starts the TMDB MCP (Model Context Protocol) Server.
@@ -28,7 +28,7 @@ async function main() {
   server.addTool(tmdbTrendingTool);
   server.addTool(tmdbPopularTool);
   server.addTool(tmdbGenreTool);
-  server.addTool(movieSuggestionsTool);
+  server.addTool(entertainmentSuggestionsTool);
 
   try {
     await server.start({

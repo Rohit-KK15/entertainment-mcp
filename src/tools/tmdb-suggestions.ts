@@ -4,50 +4,51 @@ import { OmdbService } from "../services/omdb-service.js";
 import dedent from "dedent";
 
 /**
- * Zod schema for GET_MOVIE_SUGGESTIONS tool parameters.
+ * Zod schema for GET_ENTERTAINMENT_SUGGESTIONS tool parameters.
  */
-const movieSuggestionsParams = z.object({
-    genre: z.string().describe("The genre of movies to suggest (e.g., 'Horror', 'Action')"),
-    releaseYear: z.number().optional().describe("The release year of the movies (e.g., 2023)"),
+const entertainmentSuggestionsParams = z.object({
+    mediaType: z.enum(["movie", "tv"]).describe("The type of media to suggest (movie or tv)"),
+    genre: z.string().describe("The genre of entertainment to suggest (e.g., 'Horror', 'Action')"),
+    releaseYear: z.number().optional().describe("The release year of the entertainment (e.g., 2023)"),
     minImdbRating: z.number().min(1).max(10).optional().describe("Minimum IMDb rating (1-10)"),
 });
 
-type MovieSuggestionsParams = z.infer<typeof movieSuggestionsParams>;
+type EntertainmentSuggestionsParams = z.infer<typeof entertainmentSuggestionsParams>;
 
 /**
- * GET_MOVIE_SUGGESTIONS tool for MCP (Model Context Protocol) server.
+ * GET_ENTERTAINMENT_SUGGESTIONS tool for MCP (Model Context Protocol) server.
  *
- * This tool suggests movies based on genre, release year, and minimum IMDb rating.
+ * This tool suggests entertainment based on genre, release year, and minimum IMDb rating.
  */
-export const movieSuggestionsTool = {
-    name: "GET_MOVIE_SUGGESTIONS",
-    description: "Suggests movies based on genre, release year, and minimum IMDb rating",
-    parameters: movieSuggestionsParams,
+export const entertainmentSuggestionsTool = {
+    name: "GET_ENTERTAINMENT_SUGGESTIONS",
+    description: "Suggests entertainment based on genre, release year, and minimum IMDb rating",
+    parameters: entertainmentSuggestionsParams,
 
-    execute: async (params: MovieSuggestionsParams) => {
+    execute: async (params: EntertainmentSuggestionsParams) => {
         const tmdbService = new TmdbService();
         const omdbService = new OmdbService();
 
         try {
             // 1. Get genre ID from TMDB
-            const genres = await tmdbService.getGenres("movie");
+            const genres = await tmdbService.getGenres(params.mediaType);
             const selectedGenre = genres.find(
                 (g) => g.name.toLowerCase() === params.genre.toLowerCase(),
             );
 
             if (!selectedGenre) {
-                return `Genre "${params.genre}" not found for movies.`;
+                return `Genre "${params.genre}" not found for ${params.mediaType}.`;
             }
 
             // 2. Discover movies by genre and release year from TMDB
             let tmdbMovies = await tmdbService.discoverByGenre(
-                "movie",
+                params.mediaType,
                 selectedGenre.id,
                 params.releaseYear,
             );
 
             if (!tmdbMovies.length) {
-                return `No movies found for genre "${params.genre}"${params.releaseYear ? ` in ${params.releaseYear}` : ""}.`;
+                return `No ${params.mediaType}s found for genre "${params.genre}"${params.releaseYear ? ` in ${params.releaseYear}` : ""}.`;
             }
 
             // 3. Filter by IMDb rating using OMDB
@@ -62,7 +63,7 @@ export const movieSuggestionsTool = {
             }
 
             if (!suggestedMovies.length) {
-                return `No movies found matching the criteria (genre: "${params.genre}"${params.releaseYear ? `, year: ${params.releaseYear}` : ""}${params.minImdbRating ? `, min IMDb rating: ${params.minImdbRating}` : ""}).`;
+                return `No ${params.mediaType}s found matching the criteria (genre: "${params.genre}"${params.releaseYear ? `, year: ${params.releaseYear}` : ""}${params.minImdbRating ? `, min IMDb rating: ${params.minImdbRating}` : ""}).`;
             }
 
             const formatted = suggestedMovies.slice(0, 5) // Limit to top 5 suggestions
@@ -79,7 +80,7 @@ export const movieSuggestionsTool = {
                 .join("\n\n");
 
             return dedent`
-                Here are some suggested horror movies:
+                Here are some suggested ${params.mediaType}s:
 
                 ${formatted}
             `;
@@ -88,9 +89,9 @@ export const movieSuggestionsTool = {
                 if (error.message.includes("API key")) {
                     return "Error: API key is not configured. Please set the TMDB_API_KEY and OMDB_API_KEY environment variables.";
                 }
-                return `Error fetching movie suggestions: ${error.message}`;
+                return `Error fetching ${params.mediaType} suggestions: ${error.message}`;
             }
-            return "An unknown error occurred while fetching movie suggestions.";
+            return "An unknown error occurred while fetching entertainment suggestions.";
         }
     },
 } as const;
