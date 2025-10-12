@@ -96,7 +96,7 @@ export class OmdbService {
       type: data.Type ?? "movie",
     };
   }
-	async getByTitle(title: string, type?: "movie" | "series" | "tv"): Promise<OmdbItem | null> {
+	async getByTitle(title: string, type?: "movie" | "series" | "episode"): Promise<OmdbItem | null> {
         this.validateApiKey();
       
         const cacheKey = `title:${type ?? "auto"}:${title.toLowerCase()}`;
