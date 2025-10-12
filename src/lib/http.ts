@@ -34,28 +34,42 @@ export async function fetchJson<T>(
 	url: string,
 	options?: RequestInit,
 	schema?: z.ZodType<T>,
+	maxRetries: number = 4,
+	retryDelayMs: number = 1000,
 ): Promise<T> {
-	const response = await fetch(url, options);
-
-	if (!response.ok) {
-		throw new HttpError(
-			response.status,
-			`HTTP error ${response.status}: ${response.statusText}`,
-			await response.text().catch(() => undefined),
-		);
-	}
-
-	const data = await response.json();
-
-	if (schema) {
+	let attempts = 0;
+	while (attempts < maxRetries) {
 		try {
-			return schema.parse(data);
+			const response = await fetch(url, options);
+
+			if (!response.ok) {
+				throw new HttpError(
+					response.status,
+					`HTTP error ${response.status}: ${response.statusText}`,
+					await response.text().catch(() => undefined),
+				);
+			}
+
+			const data = await response.json();
+
+			if (schema) {
+				try {
+					return schema.parse(data);
+				} catch (error) {
+					throw new Error(
+						`Invalid response data: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			}
+
+			return data as T;
 		} catch (error) {
-			throw new Error(
-				`Invalid response data: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			attempts++;
+			if (attempts >= maxRetries) {
+				throw error;
+			}
+			await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
 		}
 	}
-
-	return data as T;
+	throw new Error("Failed to fetch JSON after multiple retries.");
 }
