@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { FastMCP } from "fastmcp";
-import { tmdbTool } from "./tools/tmdb.js";
+import { tmdbTool } from "./tools/tmdb-details.js";
+import { omdbTool } from "./tools/omdb-details.js";
+import { tmdbTrendingTool } from "./tools/tmdb-trending.js";
+import { tmdbPopularTool } from "./tools/tmdb-popular.js";
+import { tmdbGenreTool } from "./tools/tmdb-genre.js";
+import { movieSuggestionsTool } from "./tools/tmdb-suggestions.js";
 
 /**
  * Initializes and starts the TMDB MCP (Model Context Protocol) Server.
@@ -12,8 +17,6 @@ import { tmdbTool } from "./tools/tmdb.js";
  * or AI agents (like OpenAI MCP interface).
  */
 async function main() {
-  console.log("🎬 Initializing TMDB MCP Server...");
-
   const server = new FastMCP({
     name: "TMDB MCP Server",
     version: "1.0.0",
@@ -21,23 +24,22 @@ async function main() {
 
   // Register all TMDB tools
   server.addTool(tmdbTool);
+  server.addTool(omdbTool);
+  server.addTool(tmdbTrendingTool);
+  server.addTool(tmdbPopularTool);
+  server.addTool(tmdbGenreTool);
+  server.addTool(movieSuggestionsTool);
 
   try {
     await server.start({
       transportType: "stdio",
     });
-
-    console.log("✅ TMDB MCP Server started successfully over stdio.");
-    console.log("   You can now connect to it using an MCP client.");
-    console.log('   Try any TMDB tool, e.g., "GET_MOVIE" or "GET_TVSHOW"!');
   } catch (error) {
-    console.error("❌ Failed to start TMDB MCP Server:", error);
-    process.exit(1);
+    throw error;
   }
 }
 
 // Start the MCP server
 main().catch((error) => {
-  console.error("❌ An unexpected error occurred in the TMDB MCP Server:", error);
-  process.exit(1);
+  throw error;
 });
