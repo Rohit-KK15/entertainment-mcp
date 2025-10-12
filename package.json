@@ -6,7 +6,7 @@
 	"type": "module",
 	"private": true,
 	"bin": {
-		"mcp-weather-server": "dist/index.js"
+		"tmbd-mcp": "dist/index.js"
 	},
 	"files": [
 		"dist"
