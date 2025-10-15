@@ -183,8 +183,74 @@ const tmdbDiscoverTvSchema = z.object({
     total_pages: z.number(),
 });
 
+const tmdbPersonSchema = z.object({
+    id: z.number(),
+    name: z.string(),
+    popularity: z.number(),
+    known_for_department: z.string().optional(),
+    profile_path: z.string().nullable(),
+    known_for: z.array(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        name: z.string().optional(),
+        media_type: z.string(),
+    })).optional(),
+});
+
+const tmdbPersonSearchResponseSchema = z.object({
+    page: z.number(),
+    results: z.array(tmdbPersonSchema),
+    total_pages: z.number(),
+    total_results: z.number(),
+});
+
 type TmdbDiscoverMovieResponse = z.infer<typeof tmdbDiscoverMovieSchema>;
 type TmdbDiscoverTvResponse = z.infer<typeof tmdbDiscoverTvSchema>;
+type TmdbPersonSearchResponse = z.infer<typeof tmdbPersonSearchResponseSchema>;
+
+/**
+ * TMDB Collection Item Schema (for search results)
+ */
+const tmdbCollectionSearchItemSchema = z.object({
+    id: z.number(),
+    name: z.string(),
+    overview: z.string().nullable(),
+    poster_path: z.string().nullable(),
+    backdrop_path: z.string().nullable(),
+});
+
+/**
+ * TMDB Collection Search Response Schema
+ */
+const tmdbCollectionSearchResponseSchema = z.object({
+    page: z.number(),
+    results: z.array(tmdbCollectionSearchItemSchema),
+    total_pages: z.number(),
+    total_results: z.number(),
+});
+
+/**
+ * TMDB Collection Details Schema
+ */
+const tmdbCollectionDetailsSchema = z.object({
+    id: z.number(),
+    name: z.string(),
+    overview: z.string().nullable(),
+    poster_path: z.string().nullable(),
+    backdrop_path: z.string().nullable(),
+    parts: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        release_date: z.string().nullable(),
+        poster_path: z.string().nullable(),
+        backdrop_path: z.string().nullable(),
+        overview: z.string().nullable(),
+        vote_average: z.number().nullable(),
+    })),
+});
+
+type TmdbCollectionSearchResponse = z.infer<typeof tmdbCollectionSearchResponseSchema>;
+type TmdbCollectionDetailsResponse = z.infer<typeof tmdbCollectionDetailsSchema>;
 
 /**
  * Common data interface for movie or TV show
@@ -199,6 +265,31 @@ export interface TmdbItem {
 	posterUrl: string;
 	language: string;
 	type: "movie" | "tv";
+}
+
+export interface TmdbPerson {
+    id: number;
+    name: string;
+    popularity: number;
+    knownForDepartment: string;
+    profilePath: string;
+    knownFor: string;
+}
+
+export interface TmdbCollection {
+    id: number;
+    name: string;
+    overview: string;
+    posterUrl: string;
+    backdropUrl: string;
+    parts: { // Simplified to match TmdbItem structure where possible
+        id: number;
+        title: string;
+        releaseDate: string;
+        posterUrl: string;
+        description: string;
+        rating: number;
+    }[];
 }
 
 /**
@@ -437,9 +528,173 @@ export class TmdbService {
 	}
 
 	/**
-	 * Discovers movies or TV shows by genre.
+	 * Searches for people (actors) by name.
 	 */
-	async discoverByGenre(
+	async searchPerson(query: string): Promise<TmdbPerson[]> {
+        if (!this.apiKey) {
+            throw new Error("TMDB API key is not configured");
+        }
+
+        const url = new URL(`${this.baseUrl}/search/person`);
+        url.searchParams.append("api_key", this.apiKey);
+        url.searchParams.append("query", query);
+        url.searchParams.append("language", "en-US");
+
+        const data = await fetchJson<
+            TmdbPersonSearchResponse
+        >(url.toString(), undefined, tmdbPersonSearchResponseSchema, 4, 1000);
+
+        return data.results.map(person => ({
+            id: person.id,
+            name: person.name,
+            popularity: person.popularity,
+            knownForDepartment: person.known_for_department ?? "Unknown",
+            profilePath: person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : "",
+            knownFor: person.known_for ? person.known_for.map(item => item.title ?? item.name).filter(Boolean).join(", ") : "N/A",
+        }));
+    }
+
+    /**
+     * Discovers movies or TV shows by an actor's ID.
+     */
+    async discoverByActor(
+        actorId: number,
+        mediaType: "movie" | "tv",
+        releaseYear?: number,
+    ): Promise<TmdbItem[]> {
+        if (!this.apiKey) {
+            throw new Error("TMDB API key is not configured");
+        }
+
+        const url = new URL(`${this.baseUrl}/discover/${mediaType}`);
+        url.searchParams.append("api_key", this.apiKey);
+        url.searchParams.append("with_cast", actorId.toString());
+        url.searchParams.append("language", "en-US");
+
+        if (releaseYear) {
+            if (mediaType === "movie") {
+                url.searchParams.append("primary_release_year", releaseYear.toString());
+            } else {
+                url.searchParams.append("first_air_date_year", releaseYear.toString());
+            }
+        }
+
+        let data: TmdbDiscoverMovieResponse | TmdbDiscoverTvResponse;
+        if (mediaType === "movie") {
+            data = await fetchJson<
+                TmdbDiscoverMovieResponse
+            >(url.toString(), undefined, tmdbDiscoverMovieSchema, 4, 1000);
+        } else {
+            data = await fetchJson<
+                TmdbDiscoverTvResponse
+            >(url.toString(), undefined, tmdbDiscoverTvSchema, 4, 1000);
+        }
+
+        const discoveredItemsWithImdbId = await Promise.all(
+            data.results.map(async (item) => {
+                if (mediaType === "movie") {
+                    const detailsUrl = new URL(`${this.baseUrl}/movie/${item.id}`);
+                    detailsUrl.searchParams.append("api_key", this.apiKey);
+                    const movieDetails = await fetchJson<
+                        z.infer<typeof tmdbMovieDetailsSchema>
+                    >(detailsUrl.toString(), undefined, tmdbMovieDetailsSchema, 4, 1000);
+                    return { ...item, imdb_id: movieDetails.imdb_id };
+                } else {
+                    const detailsUrl = new URL(`${this.baseUrl}/tv/${item.id}`);
+                    detailsUrl.searchParams.append("api_key", this.apiKey);
+                    detailsUrl.searchParams.append("append_to_response", "external_ids");
+                    const tvDetails = await fetchJson<
+                        z.infer<typeof tmdbTvDetailsSchema>
+                    >(detailsUrl.toString(), undefined, tmdbTvDetailsSchema, 4, 1000);
+                    return { ...item, imdb_id: tvDetails.external_ids?.imdb_id };
+                }
+            }),
+        );
+
+        return discoveredItemsWithImdbId.map((item) => ({
+            id: item.id,
+            imdbId: item.imdb_id ?? null,
+            title: (item as any).title ?? (item as any).name ?? "Unknown",
+            description: item.overview ?? "No description available.",
+            releaseDate: (item as any).release_date ?? (item as any).first_air_date ?? "Unknown",
+            rating: item.vote_average ?? 0,
+            posterUrl: item.poster_path
+                ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                : "",
+            language: item.original_language ?? "Unknown",
+            type: mediaType,
+        }));
+    }
+
+    /**
+     * Searches for movie collections by name.
+     */
+    async searchCollections(query: string): Promise<TmdbCollection[]> {
+        if (!this.apiKey) {
+            throw new Error("TMDB API key is not configured");
+        }
+
+        const url = new URL(`${this.baseUrl}/search/collection`);
+        url.searchParams.append("api_key", this.apiKey);
+        url.searchParams.append("query", query);
+        url.searchParams.append("language", "en-US");
+
+        const data = await fetchJson<
+            TmdbCollectionSearchResponse
+        >(url.toString(), undefined, tmdbCollectionSearchResponseSchema, 4, 1000);
+
+        return data.results.map(collection => ({
+            id: collection.id,
+            name: collection.name,
+            overview: collection.overview ?? "No overview available.",
+            posterUrl: collection.poster_path ? `https://image.tmdb.org/t/p/w500${collection.poster_path}` : "",
+            backdropUrl: collection.backdrop_path ? `https://image.tmdb.org/t/p/w500${collection.backdrop_path}` : "",
+            parts: [], // Collection search does not return parts
+        }));
+    }
+
+    /**
+     * Fetches details of a specific movie collection by ID.
+     */
+    async getCollectionDetails(collectionId: number): Promise<TmdbCollection | null> {
+        if (!this.apiKey) {
+            throw new Error("TMDB API key is not configured");
+        }
+
+        const url = new URL(`${this.baseUrl}/collection/${collectionId}`);
+        url.searchParams.append("api_key", this.apiKey);
+        url.searchParams.append("language", "en-US");
+
+        try {
+            const data = await fetchJson<
+                TmdbCollectionDetailsResponse
+            >(url.toString(), undefined, tmdbCollectionDetailsSchema, 4, 1000);
+
+            return {
+                id: data.id,
+                name: data.name,
+                overview: data.overview ?? "No overview available.",
+                posterUrl: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : "",
+                backdropUrl: data.backdrop_path ? `https://image.tmdb.org/t/p/w500${data.backdrop_path}` : "",
+                parts: data.parts.map(movie => ({
+                    id: movie.id,
+                    title: movie.title,
+                    releaseDate: movie.release_date ?? "Unknown",
+                    posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "",
+                    description: movie.overview ?? "No description available.",
+                    rating: movie.vote_average ?? 0,
+                })),
+            };
+        } catch (error) {
+            console.error(`Error fetching collection details for ID ${collectionId}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Discovers movies or TV shows by genre.
+     */
+    async discoverByGenre(
 		mediaType: "movie" | "tv",
 		genreId: number,
 		releaseYear?: number, // Add this parameter
