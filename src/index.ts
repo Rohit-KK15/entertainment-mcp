@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 import { FastMCP } from "fastmcp";
-import { tmdbTool } from "./tools/tmdb-details.js";
-import { omdbTool } from "./tools/omdb-details.js";
-import { tmdbTrendingTool } from "./tools/tmdb-trending.js";
-import { tmdbPopularTool } from "./tools/tmdb-popular.js";
-import { tmdbGenreTool } from "./tools/tmdb-genre.js";
-import { entertainmentSuggestionsTool } from "./tools/tmdb-suggestions.js";
+import { tmdbDetailsTool } from "./tools/tmdb/tmdb-details.js";
+import { omdbDetailsTool } from "./tools/omdb/omdb-details.js";
+import { tmdbTrendingTool } from "./tools/tmdb/tmdb-trending.js";
+import { tmdbPopularTool } from "./tools/tmdb/tmdb-popular.js";
+import { tmdbGenreTool } from "./tools/tmdb/tmdb-genre.js";
+import { entertainmentSuggestionsTool } from "./tools/tmdb/tmdb-suggestions.js";
+import { tmdbPersonSearchTool } from "./tools/tmdb/tmdb-search-person.js";
+import { tmdbDiscoverByActorTool } from "./tools/tmdb/tmdb-discover-by-actor.js";
+import { tmdbSearchMovieByTitleTool } from "./tools/tmdb/tmdb-search-movie-by-title.js";
+import { tmdbSearchTvByTitleTool } from "./tools/tmdb/tmdb-search-tv-by-title.js";
+import { tmdbSearchCollectionsTool, tmdbCollectionDetailsTool } from "./tools/tmdb/tmdb-collections.js";
 
 /**
  * Initializes and starts the TMDB MCP (Model Context Protocol) Server.
@@ -23,12 +28,20 @@ async function main() {
   });
 
   // Register all TMDB tools
-  server.addTool(tmdbTool);
-  server.addTool(omdbTool);
+  server.addTool(tmdbDetailsTool);
+  server.addTool(omdbDetailsTool);
   server.addTool(tmdbTrendingTool);
   server.addTool(tmdbPopularTool);
   server.addTool(tmdbGenreTool);
   server.addTool(entertainmentSuggestionsTool);
+  // server.addTool(omdbByTitleTool);
+  // server.addTool(omdbImdbSummaryTool);
+  server.addTool(tmdbPersonSearchTool);
+  server.addTool(tmdbDiscoverByActorTool);
+  server.addTool(tmdbSearchMovieByTitleTool);
+  server.addTool(tmdbSearchTvByTitleTool);
+  server.addTool(tmdbSearchCollectionsTool);
+  server.addTool(tmdbCollectionDetailsTool);
 
   try {
     await server.start({
