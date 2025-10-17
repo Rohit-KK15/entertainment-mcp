@@ -60,8 +60,30 @@ const tmdbTvDetailsSchema = z.object({
     }).nullable().optional(),
 });
 
+const tmdbWatchProviderDetailsSchema = z.object({
+    display_priority: z.number(),
+    logo_path: z.string(),
+    provider_name: z.string(),
+    provider_id: z.number(),
+});
+
+const tmdbWatchProvidersSchema = z.object({
+    link: z.string().url(),
+    flatrate: z.array(tmdbWatchProviderDetailsSchema).optional(),
+    rent: z.array(tmdbWatchProviderDetailsSchema).optional(),
+    buy: z.array(tmdbWatchProviderDetailsSchema).optional(),
+    ads: z.array(tmdbWatchProviderDetailsSchema).optional(),
+    free: z.array(tmdbWatchProviderDetailsSchema).optional(),
+});
+
+const tmdbWatchProvidersResponseSchema = z.object({
+    id: z.number(),
+    results: z.record(z.string(), tmdbWatchProvidersSchema).optional(),
+});
+
 type TmdbMovieResponse = z.infer<typeof tmdbMovieSchema>;
 type TmdbTvResponse = z.infer<typeof tmdbTvSchema>;
+type TmdbWatchProvidersResponse = z.infer<typeof tmdbWatchProvidersResponseSchema>;
 
 /**
  * TMDB Trending Item Schema (Common for movies and TV shows)
@@ -265,6 +287,7 @@ export interface TmdbItem {
 	posterUrl: string;
 	language: string;
 	type: "movie" | "tv";
+	watchProviders?: TmdbWatchProvidersResponse["results"];
 }
 
 export interface TmdbPerson {
@@ -335,19 +358,23 @@ export class TmdbService {
 			}),
 		);
 
-		return moviesWithImdbId.map((movie) => ({
-			id: movie.id,
-			imdbId: movie.imdb_id ?? null,
-			title: movie.title,
-			description: movie.overview ?? "No description available.",
-			releaseDate: movie.release_date ?? "Unknown",
-			rating: movie.vote_average ?? 0,
-			posterUrl: movie.poster_path
-				? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-				: "",
-			language: movie.original_language ?? "Unknown",
-			type: "movie",
-		}));
+		const moviesWithWatchProviders = await Promise.all(
+			moviesWithImdbId.map(async (movie) => ({
+				id: movie.id,
+				imdbId: movie.imdb_id ?? null,
+				title: movie.title,
+				description: movie.overview ?? "No description available.",
+				releaseDate: movie.release_date ?? "Unknown",
+				rating: movie.vote_average ?? 0,
+				posterUrl: movie.poster_path
+					? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+					: "",
+				language: movie.original_language ?? "Unknown",
+				type: "movie" as const,
+				watchProviders: await this.getWatchProviders("movie", movie.id),
+			}))
+		);
+		return moviesWithWatchProviders;
 	}
 
 	/**
@@ -381,19 +408,23 @@ export class TmdbService {
 			}),
 		);
 
-		return tvShowsWithImdbId.map((show) => ({
-			id: show.id,
-			imdbId: show.imdb_id ?? null,
-			title: show.name,
-			description: show.overview ?? "No description available.",
-			releaseDate: show.first_air_date ?? "Unknown",
-			rating: show.vote_average ?? 0,
-			posterUrl: show.poster_path
-				? `https://image.tmdb.org/t/p/w500${show.poster_path}`
-				: "",
-			language: show.original_language ?? "Unknown",
-			type: "tv",
-		}));
+		const tvShowsWithWatchProviders = await Promise.all(
+			tvShowsWithImdbId.map(async (show) => ({
+				id: show.id,
+				imdbId: show.imdb_id ?? null,
+				title: show.name,
+				description: show.overview ?? "No description available.",
+				releaseDate: show.first_air_date ?? "Unknown",
+				rating: show.vote_average ?? 0,
+				posterUrl: show.poster_path
+					? `https://image.tmdb.org/t/p/w500${show.poster_path}`
+					: "",
+				language: show.original_language ?? "Unknown",
+				type: "tv" as const,
+				watchProviders: await this.getWatchProviders("tv", show.id),
+			}))
+		);
+		return tvShowsWithWatchProviders;
 	}
 
 	/**
@@ -436,19 +467,23 @@ export class TmdbService {
 			}),
 		);
 
-		return trendingItemsWithImdbId.map((item) => ({
-			id: item.id,
-			imdbId: item.imdb_id ?? null,
-			title: item.title ?? item.name ?? "Unknown",
-			description: item.overview ?? "No description available.",
-			releaseDate: item.release_date ?? item.first_air_date ?? "Unknown",
-			rating: item.vote_average ?? 0,
-			posterUrl: item.poster_path
-				? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-				: "",
-			language: item.original_language ?? "Unknown",
-			type: item.media_type === "movie" ? "movie" : "tv", // Assuming only movie or tv for TmdbItem
-		}));
+		const trendingItemsWithWatchProviders = await Promise.all(
+			trendingItemsWithImdbId.map(async (item) => ({
+				id: item.id,
+				imdbId: item.imdb_id ?? null,
+				title: item.title ?? item.name ?? "Unknown",
+				description: item.overview ?? "No description available.",
+				releaseDate: item.release_date ?? item.first_air_date ?? "Unknown",
+				rating: item.vote_average ?? 0,
+				posterUrl: item.poster_path
+					? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+					: "",
+				language: item.original_language ?? "Unknown",
+				type: (item.media_type === "movie" ? "movie" : "tv") as ("movie" | "tv"),
+				watchProviders: await this.getWatchProviders(item.media_type === "movie" ? "movie" : "tv", item.id),
+			}))
+		);
+		return trendingItemsWithWatchProviders;
 	}
 
 	/**
@@ -494,19 +529,23 @@ export class TmdbService {
 			}),
 		);
 
-		return popularItemsWithImdbId.map((item) => ({
-			id: item.id,
-			imdbId: item.imdb_id ?? null,
-			title: (item as any).title ?? (item as any).name ?? "Unknown",
-			description: item.overview ?? "No description available.",
-			releaseDate: (item as any).release_date ?? (item as any).first_air_date ?? "Unknown",
-			rating: item.vote_average ?? 0,
-			posterUrl: item.poster_path
-				? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-				: "",
-			language: item.original_language ?? "Unknown",
-			type: mediaType,
-		}));
+		const popularItemsWithWatchProviders = await Promise.all(
+			popularItemsWithImdbId.map(async (item) => ({
+				id: item.id,
+				imdbId: item.imdb_id ?? null,
+				title: (mediaType === "movie" ? (item as TmdbPopularMovieResponse["results"][number]).title : (item as TmdbPopularTvResponse["results"][number]).name) ?? "Unknown",
+				description: item.overview ?? "No description available.",
+				releaseDate: (mediaType === "movie" ? (item as TmdbPopularMovieResponse["results"][number]).release_date : (item as TmdbPopularTvResponse["results"][number]).first_air_date) ?? "Unknown",
+				rating: item.vote_average ?? 0,
+				posterUrl: item.poster_path
+					? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+					: "",
+				language: item.original_language ?? "Unknown",
+				type: mediaType,
+				watchProviders: await this.getWatchProviders(mediaType, item.id),
+			}))
+		);
+		return popularItemsWithWatchProviders;
 	}
 
 	/**
@@ -611,19 +650,23 @@ export class TmdbService {
             }),
         );
 
-        return discoveredItemsWithImdbId.map((item) => ({
-            id: item.id,
-            imdbId: item.imdb_id ?? null,
-            title: (item as any).title ?? (item as any).name ?? "Unknown",
-            description: item.overview ?? "No description available.",
-            releaseDate: (item as any).release_date ?? (item as any).first_air_date ?? "Unknown",
-            rating: item.vote_average ?? 0,
-            posterUrl: item.poster_path
-                ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-                : "",
-            language: item.original_language ?? "Unknown",
-            type: mediaType,
-        }));
+		const discoveredItemsWithWatchProviders = await Promise.all(
+			discoveredItemsWithImdbId.map(async (item) => ({
+				id: item.id,
+				imdbId: item.imdb_id ?? null,
+				title: (mediaType === "movie" ? (item as TmdbDiscoverMovieResponse["results"][number]).title : (item as TmdbDiscoverTvResponse["results"][number]).name) ?? "Unknown",
+				description: item.overview ?? "No description available.",
+				releaseDate: (mediaType === "movie" ? (item as TmdbDiscoverMovieResponse["results"][number]).release_date : (item as TmdbDiscoverTvResponse["results"][number]).first_air_date) ?? "Unknown",
+				rating: item.vote_average ?? 0,
+				posterUrl: item.poster_path
+					? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+					: "",
+				language: item.original_language ?? "Unknown",
+				type: mediaType,
+				watchProviders: await this.getWatchProviders(mediaType, item.id),
+			}))
+		);
+		return discoveredItemsWithWatchProviders;
     }
 
     /**
@@ -762,4 +805,26 @@ export class TmdbService {
 			type: mediaType,
 		}));
 	}
+
+    /**
+     * Fetches watch providers for a given movie or TV show.
+     */
+    private async getWatchProviders(mediaType: "movie" | "tv", id: number): Promise<TmdbWatchProvidersResponse["results"] | undefined> {
+        if (!this.apiKey) {
+            throw new Error("TMDB API key is not configured");
+        }
+
+        const url = new URL(`${this.baseUrl}/${mediaType}/${id}/watch/providers`);
+        url.searchParams.append("api_key", this.apiKey);
+
+        try {
+            const data = await fetchJson<
+                TmdbWatchProvidersResponse
+            >(url.toString(), undefined, tmdbWatchProvidersResponseSchema, 4, 1000);
+            return data.results;
+        } catch (error) {
+            console.error(`Error fetching watch providers for ${mediaType} ID ${id}:`, error);
+            return undefined;
+        }
+    }
 }

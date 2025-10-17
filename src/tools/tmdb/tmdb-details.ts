@@ -52,6 +52,7 @@ export const tmdbDetailsTool = {
 					   🗣️ Language: ${item.language.toUpperCase()}
 					   📖 Overview: ${item.description}
 					   🖼️ Poster: ${item.posterUrl || "N/A"}
+					   📺 Stream on: ${item.watchProviders?.IN?.flatrate?.map(p => p.provider_name).join(", ") || "N/A"}
 				`,
 				)
 				.join("\n\n");
