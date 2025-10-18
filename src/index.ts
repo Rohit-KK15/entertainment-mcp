@@ -19,7 +19,7 @@ import { tmdbSearchCollectionsTool, tmdbCollectionDetailsTool } from "./tools/tm
  * detailed information about movies and TV shows.
  *
  * It uses FastMCP with stdio transport for integration with MCP-compatible clients
- * or AI agents (like OpenAI MCP interface).
+ * or AI agents .
  */
 async function main() {
   const server = new FastMCP({
@@ -34,8 +34,6 @@ async function main() {
   server.addTool(tmdbPopularTool);
   server.addTool(tmdbGenreTool);
   server.addTool(entertainmentSuggestionsTool);
-  // server.addTool(omdbByTitleTool);
-  // server.addTool(omdbImdbSummaryTool);
   server.addTool(tmdbPersonSearchTool);
   server.addTool(tmdbDiscoverByActorTool);
   server.addTool(tmdbSearchMovieByTitleTool);
