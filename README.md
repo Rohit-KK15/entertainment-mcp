@@ -11,8 +11,8 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
 Entertainment-MCP provides the following functionalities:
 
 - Retrieve movie, series, and episode information from OMDB.
-- Search and get details about movie collections from TMDB.
 - Get detailed information about movies and TV shows from TMDB.
+- Search and get details about movie collections from TMDB.
 - Discover movies and TV shows by actor from TMDB.
 - Get movies and TV shows by genre from TMDB.
 - Retrieve popular movies and TV shows from TMDB.
