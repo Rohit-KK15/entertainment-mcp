@@ -1,4 +1,8 @@
+<div align="center">
+
 # Entertainment-MCP
+
+</div>
 
 A Model Context Protocol (MCP) server that enables AI assistants to interact with entertainment APIs.
 
