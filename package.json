@@ -4,7 +4,6 @@
 	"description": "This MCP fetches information about Movies/TvShows from TMDB and OMDB",
 	"main": "dist/index.js",
 	"type": "module",
-	"private": true,
 	"bin": {
 		"tmbd-mcp": "dist/index.js"
 	},
