@@ -2,7 +2,7 @@
 
 # Entertainment-MCP
 
-<p align="left">
+<p align="centre">
   <img src="https://img.shields.io/badge/TAG-MCP-blue" />
   <img src="https://img.shields.io/badge/TAG-fastMCP-green" />
   <img src="https://img.shields.io/badge/TAG-typescript-orange" />
