@@ -2,6 +2,12 @@
 
 # Entertainment-MCP
 
+<p align="left">
+  <img src="https://img.shields.io/badge/TAG-MCP-blue" />
+  <img src="https://img.shields.io/badge/TAG-fastMCP-green" />
+  <img src="https://img.shields.io/badge/TAG-typescript-orange" />
+</p>
+
 </div>
 
 A Model Context Protocol (MCP) server that enables AI assistants to interact with entertainment APIs.
