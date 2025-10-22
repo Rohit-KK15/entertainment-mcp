@@ -135,27 +135,27 @@ export class OmdbService {
 	}
 
 	async getByImdbId(imdbId: string): Promise<OmdbItem | null> {
-        this.validateApiKey();
-    
-        const cacheKey = `id:${imdbId}`;
-        if (this.cache.has(cacheKey)) return this.cache.get(cacheKey) as OmdbItem;
-    
-        try {
-          const url = new URL(this.baseUrl);
-          url.searchParams.append("apikey", this.apiKey);
-          url.searchParams.append("i", imdbId);
-          url.searchParams.append("plot", "full");
-    
-          const data = await fetchJson(url.toString(), undefined, omdbMovieSchema);
-    
-          if (data.Response === "False") return null;
-    
-          const item = this.normalize(data);
-          this.cache.set(cacheKey, item);
-          return item;
-        } catch (err) {
-          console.error(`OMDB fetch failed for IMDb ID "${imdbId}":`, err);
-          return null;
-        }
-      }
+		this.validateApiKey();
+
+		const cacheKey = `id:${imdbId}`;
+		if (this.cache.has(cacheKey)) return this.cache.get(cacheKey) as OmdbItem;
+
+		try {
+			const url = new URL(this.baseUrl);
+			url.searchParams.append("apikey", this.apiKey);
+			url.searchParams.append("i", imdbId);
+			url.searchParams.append("plot", "full");
+
+			const data = await fetchJson(url.toString(), undefined, omdbMovieSchema);
+
+			if (data.Response === "False") return null;
+
+			const item = this.normalize(data);
+			this.cache.set(cacheKey, item);
+			return item;
+		} catch (err) {
+			console.error(`OMDB fetch failed for IMDb ID "${imdbId}":`, err);
+			return null;
+		}
+	}
 }
