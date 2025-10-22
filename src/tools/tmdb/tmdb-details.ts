@@ -1,14 +1,19 @@
+import dedent from "dedent";
 import { z } from "zod";
 import { TmdbService } from "../../services/tmdb-service.js";
-import dedent from "dedent";
 
 /**
  * Zod schema for TMDB tool parameters.
  * Validates that the query is a non-empty string and type is "movie" or "tv".
  */
 const tmdbToolParams = z.object({
-	query: z.string().min(1).describe("The title of the movie or TV show to search for"),
-	type: z.enum(["movie", "tv"]).describe("Specify whether to search for a movie or TV show"),
+	query: z
+		.string()
+		.min(1)
+		.describe("The title of the movie or TV show to search for"),
+	type: z
+		.enum(["movie", "tv"])
+		.describe("Specify whether to search for a movie or TV show"),
 });
 
 type TmdbToolParams = z.infer<typeof tmdbToolParams>;
@@ -44,15 +49,16 @@ export const tmdbDetailsTool = {
 			const top = results.slice(0, 3); // limit to top 3 results for brevity
 
 			const formatted = top
-				.map((item, i) =>
-					dedent`
+				.map(
+					(item, i) =>
+						dedent`
 					${i + 1}. ${item.title} (${item.releaseDate})
 					   🎬 IMDB ID: ${item.imdbId || "N/A"}
 					   ⭐ Rating: ${item.rating}
 					   🗣️ Language: ${item.language.toUpperCase()}
 					   📖 Overview: ${item.description}
 					   🖼️ Poster: ${item.posterUrl || "N/A"}
-					   📺 Stream on: ${item.watchProviders?.IN?.flatrate?.map(p => p.provider_name).join(", ") || "N/A"}
+					   📺 Stream on: ${item.watchProviders?.IN?.flatrate?.map((p) => p.provider_name).join(", ") || "N/A"}
 				`,
 				)
 				.join("\n\n");
